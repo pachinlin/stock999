@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>台股智慧損益計算器</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Noto Sans TC', sans-serif; }
+        body { background-color: #f8fafc; color: #1e293b; padding: 20px; line-height: 1.5; }
+        .max-w { max-width: 1200px; margin: 0 auto; }
+        header { display: flex; justify-content: space-between; align-items: center; background: #fff; padding: 15px 20px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+        .logo-area { display: flex; align-items: center; gap: 10px; }
+        .logo-icon { background: #ef4444; color: #fff; padding: 10px 12px; border-radius: 8px; font-size: 18px; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .card { background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .card p { font-size: 12px; color: #64748b; margin-bottom: 5px; }
+        .card h3 { font-size: 20px; font-weight: 700; color: #0f172a; }
+        .btn-group { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+        .btn { background: #ef4444; color: #fff; border: none; padding: 10px 18px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; }
+        .btn:hover { background: #dc2626; }
+        .btn-secondary { background: #e2e8f0; color: #334155; }
+        .btn-secondary:hover { background: #cbd5e1; }
+        .btn-cloud { background: #6366f1; color: #fff; }
+        .btn-cloud:hover { background: #4f46e5; }
+        .table-container { background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }
+        th, td { padding: 12px 16px; border-bottom: 1px solid #e2e8f0; }
+        th { background: #f1f5f9; color: #475569; font-size: 12px; text-transform: uppercase; }
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+        .text-red { color: #ef4444; font-weight: 700; }
+        .text-green { color: #22c55e; font-weight: 700; }
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; align-items: center; justify-content: center; padding: 15px; }
+        .modal.active { display: flex !important; }
+        .modal-content { background: #fff; width: 100%; max-width: 550px; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.2); max-height: 90vh; display: flex; flex-direction: column; }
+        .modal-header { padding: 15px 20px; background: #f1f5f9; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; }
+        .modal-body { padding: 20px; overflow-y: auto; flex: 1; }
+        .form-group { margin-bottom: 15px; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+        label { display: block; font-size: 12px; font-weight: 500; color: #475569; margin-bottom: 5px; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; outline: none; }
+        input:focus, select:focus { border-color: #ef4444; }
+        .auto-box { background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="max-w">
+        <header>
+            <div class="logo-area">
+                <div class="logo-icon"><i class="fa-solid fa-chart-line"></i></div>
+                <div>
+                    <h1 style="font-size: 16px; font-weight: 700;">台股智慧損益計算器</h1>
+                    <p style="font-size: 11px; color: #64748b;">Google 試算表雙向同步版</p>
+                </div>
+            </div>
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <button type="button" class="btn btn-cloud" style="padding: 6px 12px; font-size: 12px;" onclick="openSyncModal()"><i class="fa-solid fa-cloud"></i> 設定網址</button>
+                <div id="syncStatus" style="font-size: 12px; color: #22c55e;"><i class="fa-solid fa-circle-check"></i> 準備就緒</div>
+            </div>
+        </header>
+
+        <section class="stats-grid">
+            <div class="card"><p>總投入成本</p><h3 id="statTotalCost">$0</h3></div>
+            <div class="card"><p>總成交金額</p><h3 id="statTotalAmount">$0</h3></div>
+            <div class="card"><p>累積實現損益</p><h3 id="statTotalProfit">$0</h3></div>
+            <div class="card"><p>整體報酬率</p><h3 id="statTotalROI">0.00%</h3></div>
+        </section>
+
+        <div class="btn-group">
+            <div>
+                <button type="button" class="btn" onclick="openModal()"><i class="fa-solid fa-plus"></i> 新增交易紀錄</button>
+                <button type="button" class="btn btn-secondary" onclick="syncWithCloud()"><i class="fa-solid fa-rotate"></i> 從雲端讀取</button>
+                <button type="button" class="btn btn-secondary" onclick="exportCSV()"><i class="fa-solid fa-download"></i> 匯出CSV</button>
+            </div>
+            <span id="recordCount" style="font-size: 13px; color: #64748b;">共 0 筆</span>
+        </div>
+
+        <section class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>日期 / 類別</th>
+                        <th>股票代號 / 名稱</th>
+                        <th class="text-right">股數 / 成本</th>
+                        <th class="text-right">成交價 / 金額</th>
+                        <th class="text-right">手續費 / 稅</th>
+                        <th class="text-right">損益金額</th>
+                        <th class="text-right">報酬率</th>
+                        <th class="text-center">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="transactionTableBody">
+                    <tr><td colspan="8" class="text-center" style="padding: 30px; color: #94a3b8;">目前尚無紀錄</td></tr>
+                </tbody>
+            </table>
+        </section>
+    </div>
+
+    <!-- Sync Modal -->
+    <div id="syncModal" class="modal">
+        <div class="modal-content" style="max-width: 450px;">
+            <div class="modal-header">
+                <h3 style="font-size: 15px; font-weight: 700;">設定 Google 試算表同步網址</h3>
+                <button type="button" onclick="closeSyncModal()" style="background:none; border:none; font-size:18px; cursor:pointer;"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Google Apps Script 部署網址 (URL)</label>
+                    <input type="text" id="gasUrlInput" placeholder="https://script.google.com/macros/s/.../exec">
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeSyncModal()">取消</button>
+                    <button type="button" class="btn btn-cloud" onclick="saveSyncSettings()">儲存並連線</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Form -->
+    <div id="transactionModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle" style="font-size: 16px; font-weight: 700;">新增交易紀錄</h3>
+                <button type="button" onclick="closeModal()" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #64748b;"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <form id="transactionForm" onsubmit="saveTransaction(event)">
+                    <input type="hidden" id="editIndex" value="-1">
+                    <div class="form-row">
+                        <div class="form-group"><label>交易日期</label><input type="date" id="txDate" required></div>
+                        <div class="form-group"><label>交易類別</label>
+                            <select id="txType" onchange="calculateAutoValues()">
+                                <option value="一般股票">一般股票</option>
+                                <option value="一般ETF">一般ETF</option>
+                                <option value="當沖">當沖 (現股當沖)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>股票代號</label>
+                            <input type="text" id="stockCode" placeholder="例: 2330, 1709, 0050" oninput="onStockCodeInput()" required style="text-transform: uppercase;">
+                        </div>
+                        <div class="form-group">
+                            <label>股票名稱 <span id="loadingName" style="color: #22c55e; font-weight: normal;"></span></label>
+                            <input type="text" id="stockName" placeholder="自動帶出，亦可自由修改" required>
+                        </div>
+                    </div>
+                    <div class="form-row-3">
+                        <div class="form-group"><label>交易股數 (預設1張)</label><input type="number" id="shares" value="1000" oninput="calculateAutoValues()" required min="1"></div>
+                        <div class="form-group"><label>成本金額</label><input type="number" id="totalCostInput" step="1" placeholder="買進總金額" oninput="calculateAutoValues()" required></div>
+                        <div class="form-group"><label>賣出單價</label><input type="number" id="sellPrice" step="0.01" placeholder="賣出價" oninput="calculateAutoValues()" required></div>
+                    </div>
+                    <div class="auto-box">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 11px; color: #64748b;">
+                            <span>手續費與稅調整時會即時重算損益</span>
+                            <span style="color: #6366f1; cursor: pointer;" onclick="forceResetProfit()">依公式重新計算</span>
+                        </div>
+                        <div class="form-row" style="margin-bottom: 10px;">
+                            <div><label>手續費 (可手動修改)</label><input type="number" id="fee" step="1" oninput="onFeeOrTaxChange()" required></div>
+                            <div><label>交易稅 (可手動修改)</label><input type="number" id="tax" step="1" oninput="onFeeOrTaxChange()" required></div>
+                        </div>
+                        <div class="form-row">
+                            <div><label>淨損益 (可手動覆寫)</label><input type="number" id="profit" step="1" oninput="onProfitManualChange()" required style="font-weight: 700; color: #ef4444;"></div>
+                            <div><label>報酬率 (%)</label><input type="text" id="roi" readonly style="font-weight: 700; background: #f1f5f9;"></div>
+                        </div>
+                    </div>
+                    <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+                        <button type="button" class="btn btn-secondary" onclick="closeModal()">取消</button>
+                        <button type="submit" class="btn">儲存</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 內建超完整台股資料庫（包含您提到的 1709 聯成、1313 聯華、各大熱門股與 ETF）
+        const masterStockDict = {
+            "1101": "台泥", "1102": "亞泥", "1103": "嘉泥", "1104": "環泥", "1108": "幸福", "1109": "信大", "1110": "東泥",
+            "1201": "味全", "1210": "大成", "1213": "大飲", "1215": "卜蜂", "1216": "統一", "1218": "泰山", "1227": "佳格", "1229": "聯華", "1231": "聯華食", "1232": "大統益", "1234": "黑松", "1235": "興泰", "1256": "鮮活果汁-KY", "1264": "德麥", "1268": "漢來美食",
+            "1301": "台塑", "1303": "南亞", "1304": "台聚", "1305": "華夏", "1307": "三芳", "1308": "亞聚", "1309": "台達化", "1310": "台苯", "1312": "國喬", "1313": "聯華", "1314": "中石化", "1315": "達新", "1319": "東陽", "1321": "大億", "1323": "永記", "1325": "恆大", "1326": "台化", "1337": "再生-KY", "1338": "廣華-KY", "1340": "勝悅-KY", "1342": "八貫",
+            "1402": "遠東新", "1409": "新纖", "1410": "南染", "1413": "宏洲", "1414": "東和", "1416": "廣豐", "1417": "嘉裕", "1419": "新紡", "1423": "利華", "1434": "福懋", "1436": "華友聯", "1439": "中和", "1440": "南紡", "1441": "大東", "1442": "名軒", "1443": "立益", "1444": "力麗", "1445": "大宇", "1446": "宏和", "1447": "力鵬", "1449": "佳和", "1451": "年興", "1452": "宏益", "1453": "大將", "1455": "集盛", "1457": "宜進", "1459": "聯發", "1460": "華懋", "1463": "強盛", "1464": "得力", "1465": "偉全", "1466": "聚隆", "1467": "南緯", "1468": "昶和", "1471": "首利", "1473": "台南", "1474": "弘裕", "1476": "儒鴻", "1477": "聚陽",
+            "1503": "士電", "1504": "東元", "1506": "正道", "1513": "中興電", "1514": "亞力", "1515": "力山", "1517": "利奇", "1519": "華城", "1521": "大億金茂", "1522": "堤維西", "1524": "耿鼎", "1525": "江申", "1526": "日馳", "1527": "鑽全", "1528": "恩德", "1529": "樂士", "1530": "亞崴", "1531": "高鋒", "1532": "勤美", "1533": "車王電", "1535": "中宇", "1536": "和大", "1537": "廣隆", "1540": "喬福", "1541": "錩泰", "1558": "伸興", "1560": "中砂", "1582": "信錦", "1590": "亞德客-KY",
+            "1701": "中化", "1702": "南聯", "1704": "榮化", "1707": "葡萄王", "1708": "東鹼", "1709": "聯成", "1710": "東聯", "1711": "永光", "1712": "興農", "1714": "和桐", "1717": "長興", "1718": "中纖", "1720": "生達", "1722": "台肥", "1723": "中碳", "1727": "中華化", "1731": "美吾華", "1732": "毛寶", "1733": "五洲藥品", "1734": "杏輝", "1735": "日勝生", "1736": "喬山", "1737": "臺鹽", "1789": "神隆", "1795": "美時",
+            "2002": "中鋼", "2006": "東和鋼鐵", "2009": "第一銅", "2014": "中鴻", "2015": "豐興", "2020": "美亞", "2022": "聚亨", "2023": "燁輝", "2024": "志聯", "2027": "大成鋼", "2028": "威致", "2029": "盛餘", "2030": "彰源", "2031": "新光鋼", "2032": "新鋼", "2033": "佳大", "2034": "允強", "2038": "海光", "2049": "上銀", "2059": "川湖",
+            "2101": "南港", "2103": "台橡", "2104": "中橡", "2105": "正新", "2106": "建大", "2107": "厚生", "2108": "南帝", "2109": "華豐", "2114": "鑫永銓",
+            "2201": "裕隆", "2204": "中華", "2206": "三陽工業", "2207": "和泰車", "2208": "台船", "2227": "裕日車", "2231": "帝寶", "2233": "宇隆", "2247": "汎德永業",
+            "2301": "光寶科", "2303": "聯電", "2305": "全友", "2308": "台達電", "2312": "金寶", "2313": "華通", "2314": "台揚", "2316": "楠梓電", "2317": "鴻海", "2323": "中環", "2324": "仁寶", "2327": "國巨", "2328": "廣宇", "2330": "台積電", "2331": "精英", "2332": "友訊", "2337": "旺宏", "2338": "光罩", "2340": "台亞", "2344": "華邦電", "2345": "智邦", "2347": "聯強", "2348": "海悅", "2349": "錸德", "2351": "順德", "2352": "佳世達", "2353": "宏碁", "2354": "鴻準", "2355": "敬鵬", "2356": "英業達", "2357": "華碩", "2359": "所羅門", "2360": "致茂", "2362": "藍天", "2363": "矽統", "2365": "昆盈", "2367": "耀華", "2368": "金像電", "2369": "菱生", "2371": "大同", "2373": "震旦行", "2374": "佳能", "2375": "凱美", "2376": "技嘉", "2377": "微星", "2379": "瑞昱", "2382": "廣達", "2383": "台光電", "2385": "群光", "2388": "威盛", "2390": "云辰", "2392": "正崴", "2393": "億光", "2395": "研華", "2397": "友通", "2399": "映泰",
+            "2401": "凌陽", "2402": "毅嘉", "2404": "漢唐", "2406": "國碩", "2408": "南亞科", "2409": "友達", "2412": "中華電", "2413": "環科", "2415": "錩新", "2417": "圓剛", "2419": "仲琦", "2420": "新巨", "2421": "建準", "2423": "固緯", "2425": "承啟", "2426": "鼎元", "2427": "三商電", "2428": "興勤", "2430": "燦坤", "2436": "偉詮電", "2439": "美律", "2441": "超豐", "2449": "京元電子", "2450": "神腦", "2451": "創見", "2453": "凌群", "2454": "聯發科", "2455": "全新", "2457": "飛宏", "2458": "義隆", "2459": "敦吉", "2460": "建通", "2462": "良維", "2464": "盟立", "2465": "麗臺", "2466": "冠西電", "2467": "志聖", "2468": "華經", "2471": "資通", "2472": "立隆電", "2474": "可成", "2476": "鉅祥", "2477": "美隆電", "2478": "大毅", "2480": "敦陽科", "2481": "強茂", "2482": "連宇", "2483": "百容", "2484": "希華", "2485": "兆赫", "2486": "一詮", "2488": "漢平", "2489": "瑞軒", "2492": "華新科", "2493": "揚博", "2495": "普安", "2497": "怡利電", "2498": "宏達電",
+            "2501": "國建", "2504": "國產", "2505": "國揚", "2511": "太子", "2515": "中工", "2516": "新建", "2520": "冠德", "2524": "京城", "2527": "宏璟", "2530": "華建", "2534": "宏盛", "2537": "聯上發", "2538": "基泰", "2539": "櫻花建", "2540": "愛山林", "2542": "興富發", "2543": "皇昌", "2545": "皇翔", "2548": "華固", "2597": "潤弘",
+            "2601": "益航", "2603": "長榮", "2605": "新興", "2606": "裕民", "2607": "榮運", "2609": "陽明", "2610": "華航", "2612": "中航", "2614": "東森", "2615": "萬海", "2616": "山隆", "2617": "台航", "2618": "長榮航", "2630": "亞航", "2633": "台灣高鐵", "2634": "漢翔", "2637": "慧洋-KY", "2642": "宅配通",
+            "2701": "萬企", "2702": "華園", "2704": "國賓", "2705": "六福", "2706": "第一店", "2707": "晶華", "2723": "美食-KY", "2727": "王品", "2731": "雄獅", "2732": "六角", "2739": "寒舍",
+            "2801": "彰銀", "2809": "京城銀", "2812": "台中銀", "2816": "旺旺保", "2820": "華票", "2834": "臺企銀", "2836": "高雄銀", "2838": "聯邦銀", "2845": "遠東銀", "2849": "安泰銀", "2850": "新光產", "2851": "中再保", "2852": "第一保", "2855": "統一證", "2867": "三商壽", "2880": "華南金", "2881": "富邦金", "2882": "國泰金", "2883": "開發金", "2884": "玉山金", "2885": "元大金", "2886": "兆豐金", "2887": "台新金", "2888": "新光金", "2889": "國票金", "2890": "永豐金", "2891": "中信金", "2892": "第一金", "2897": "王道銀行",
+            "2903": "遠百", "2905": "三商", "2908": "特力", "2912": "統一超", "2913": "農林", "2915": "潤泰全",
+            "3003": "健和興", "3004": "豐達科", "3005": "神基", "3006": "晶豪科", "3008": "大立光", "3010": "華立", "3013": "晟銘電", "3014": "聯陽", "3015": "全漢", "3017": "奇鋐", "3019": "亞光", "3023": "信邦", "3025": "星通", "3026": "禾伸堂", "3027": "盛達", "3028": "增你強", "3029": "零壹", "3031": "佰鴻", "3032": "偉訓", "3033": "威健", "3034": "聯詠", "3035": "智原", "3036": "文曄", "3037": "欣興", "3040": "遠見", "3041": "揚智", "3042": "晶技", "3044": "健鼎", "3045": "台灣大", "3047": "訊舟", "3048": "益登", "3049": "精聯", "3050": "鈺德", "3051": "力特", "3055": "蔚華科", "3059": "華晶科", "3062": "建漢", "3090": "日電貿", "3094": "聯傑", "3130": "一零四", "3189": "景碩", "3231": "緯創", "3376": "新日興", "3406": "玉晶光", "3443": "創意", "3529": "鑫創", "3533": "嘉澤", "3661": "世芯-KY", "3665": "貿聯-KY", "3673": "TPK-KY", "3680": "家登", "3711": "日月光投控", "4904": "遠傳", "4938": "和碩", "4958": "臻鼎-KY", "5871": "中租-KY", "5876": "上海商銀", "5880": "合庫金", "6505": "台塑化", "6669": "緯穎", "8046": "南電",
+            "0050": "元大台灣50", "0051": "元大中型100", "0052": "富邦科技", "0056": "元大高股息", "006208": "富邦台50", "00632R": "元大台灣50反1", "00692": "富邦公司治理", "00713": "元大台灣高息低波", "00878": "國泰永續高股息", "00881": "國泰台灣5G+", "00919": "群益台灣精選高息", "00922": "國泰台灣領袖50", "00923": "群益台ESG低碳50", "00929": "復華台灣科技優息", "00939": "統一台灣高息動能", "00940": "元大台灣價值高息"
+        };
+
+        let transactions = JSON.parse(localStorage.getItem('tw_stock_transactions')) || [];
+        let gasUrl = localStorage.getItem('tw_stock_gas_url') || '';
+        let userLockedProfit = false;
+
+        window.onload = function() {
+            try { document.getElementById('txDate').valueAsDate = new Date(); } catch(e) {}
+            renderTable();
+            updateStatistics();
+            if (gasUrl) { syncWithCloud(); }
+        };
+
+        function openSyncModal() {
+            document.getElementById('gasUrlInput').value = gasUrl;
+            document.getElementById('syncModal').classList.add('active');
+        }
+        function closeSyncModal() { document.getElementById('syncModal').classList.remove('active'); }
+        function saveSyncSettings() {
+            gasUrl = document.getElementById('gasUrlInput').value.trim();
+            localStorage.setItem('tw_stock_gas_url', gasUrl);
+            closeSyncModal();
+            syncWithCloud();
+        }
+
+        function formatRoiPercent(val, cost, profit) {
+            if (typeof val === 'string' && val.includes('%')) return val;
+            let num = parseFloat(val);
+            if (!isNaN(num)) {
+                if (Math.abs(num) < 2 && num !== 0) return (num * 100).toFixed(2) + '%';
+                return num.toFixed(2) + '%';
+            }
+            const c = parseFloat(cost) || 0;
+            const p = parseFloat(profit) || 0;
+            return c > 0 ? ((p / c) * 100).toFixed(2) + '%': '0.00%';
+        }
+
+        async function syncWithCloud() {
+            if (!gasUrl) return;
+            try {
+                const res = await fetch(gasUrl);
+                const data = await res.json();
+                if (Array.isArray(data)) {
+                    transactions = data.map(item => {
+                        const cost = parseFloat(item.totalCost) || 0;
+                        const profit = parseFloat(item.profit) || 0;
+                        return {
+                            date: item.date || '',
+                            type: item.type || '',
+                            code: item.code || '',
+                            name: item.name || '',
+                            shares: parseFloat(item.shares) || 0,
+                            totalCost: cost,
+                            sellPrice: parseFloat(item.sellPrice) || 0,
+                            fee: parseFloat(item.fee) || 0,
+                            tax: parseFloat(item.tax) || 0,
+                            profit: profit,
+                            roi: formatRoiPercent(item.roi, cost, profit)
+                        };
+                    });
+                    localStorage.setItem('tw_stock_transactions', JSON.stringify(transactions));
+                    renderTable();
+                    updateStatistics();
+                }
+            } catch(e) {}
+        }
+
+        async function pushToCloud() {
+            if (!gasUrl) return;
+            try {
+                await fetch(gasUrl, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: JSON.stringify(transactions)
+                });
+            } catch(e) {}
+        }
+
+        // 智慧即時代號比對（結合萬用字首判斷與完整資料庫）
+        function onStockCodeInput() {
+            const code = document.getElementById('stockCode').value.trim().toUpperCase();
+            const nameInput = document.getElementById('stockName');
+            const loadingIndicator = document.getElementById('loadingName');
+
+            if (!code) {
+                nameInput.value = "";
+                loadingIndicator.innerText = "";
+                return;
+            }
+
+            // 1. 優先從內建資料庫匹配
+            if (masterStockDict[code]) {
+                nameInput.value = masterStockDict[code];
+                loadingIndicator.innerText = "✓ 已自動帶出";
+                return;
+            }
+
+            // 2. 智慧萬用後備機制：若不在清單中，根據代號前綴自動智能推導（例如 17xx 化工股、00xx ETF、2xxx 電子傳產等），免除手動盲打
+            if (code.startsWith("00")) {
+                nameInput.value = "台股ETF " + code;
+            } else if (code.startsWith("11")) {
+                nameInput.value = "水泥股 " + code;
+            } else if (code.startsWith("13")) {
+                nameInput.value = "塑膠股 " + code;
+            } else if (code.startsWith("14")) {
+                nameInput.value = "紡織股 " + code;
+            } else if (code.startsWith("15") || code.startsWith("16") || code.startsWith("17")) {
+                nameInput.value = "電機化工 " + code;
+            } else if (code.startsWith("20")) {
+                nameInput.value = "鋼鐵股 " + code;
+            } else if (code.startsWith("23") || code.startsWith("24") || code.startsWith("3")) {
+                nameInput.value = "電子股 " + code;
+            } else if (code.startsWith("25") || code.startsWith("55")) {
+                nameInput.value = "營建股 " + code;
+            } else if (code.startsWith("26")) {
+                nameInput.value = "航運股 " + code;
+            } else if (code.startsWith("28")) {
+                nameInput.value = "金融股 " + code;
+            } else if (code.startsWith("29")) {
+                nameInput.value = "百貨股 " + code;
+            } else {
+                nameInput.value = "台股 " + code;
+            }
+            loadingIndicator.innerText = "(已智慧產生，可自由修改)";
+        }
+
+        function onFeeOrTaxChange() {
+            userLockedProfit = false;
+            calculateAutoValues();
+        }
+
+        function onProfitManualChange() {
+            userLockedProfit = true;
+            const cost = parseFloat(document.getElementById('totalCostInput').value) || 0;
+            const profit = parseFloat(document.getElementById('profit').value) || 0;
+            document.getElementById('roi').value = formatRoiPercent(null, cost, profit);
+        }
+
+        function forceResetProfit() {
+            userLockedProfit = false;
+            calculateAutoValues();
+        }
+
+        function calculateAutoValues() {
+            const type = document.getElementById('txType').value;
+            const shares = parseFloat(document.getElementById('shares').value) || 0;
+            const cost = parseFloat(document.getElementById('totalCostInput').value) || 0;
+            const price = parseFloat(document.getElementById('sellPrice').value) || 0;
+            const amt = shares * price;
+
+            let feeInput = document.getElementById('fee');
+            let taxInput = document.getElementById('tax');
+            
+            let fee = Math.round(amt * 0.001425 * 0.6);
+            if (fee < 20 && amt > 0) fee = 20;
+            if (!document.getElementById('fee').matches(':focus')) {
+                feeInput.value = fee;
+            }
+
+            let taxRate = type === '一般ETF' ? 0.001 : (type === '當沖' ? 0.0015 : 0.003);
+            let tax = Math.round(amt * taxRate);
+            if (!document.getElementById('tax').matches(':focus')) {
+                taxInput.value = tax;
+            }
+
+            const currentFee = parseFloat(feeInput.value) || 0;
+            const currentTax = parseFloat(taxInput.value) || 0;
+
+            let profit;
+            if (!userLockedProfit) {
+                profit = Math.round(amt - currentFee - currentTax - cost);
+                document.getElementById('profit').value = profit;
+            } else {
+                profit = parseFloat(document.getElementById('profit').value) || 0;
+            }
+
+            document.getElementById('roi').value = formatRoiPercent(null, cost, profit);
+        }
+
+        function openModal() {
+            userLockedProfit = false;
+            document.getElementById('editIndex').value = -1;
+            document.getElementById('modalTitle').innerText = "新增交易紀錄";
+            document.getElementById('transactionForm').reset();
+            try { document.getElementById('txDate').valueAsDate = new Date(); } catch(e) {}
+            document.getElementById('shares').value = "1000";
+            document.getElementById('stockName').value = "";
+            document.getElementById('loadingName').innerText = "";
+            calculateAutoValues();
+            document.getElementById('transactionModal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('transactionModal').classList.remove('active');
+        }
+
+        function saveTransaction(e) {
+            e.preventDefault();
+            const idx = parseInt(document.getElementById('editIndex').value);
+            const cost = parseFloat(document.getElementById('totalCostInput').value) || 0;
+            const profit = parseFloat(document.getElementById('profit').value) || 0;
+            const rawRoi = document.getElementById('roi').value;
+
+            const tx = {
+                date: document.getElementById('txDate').value,
+                type: document.getElementById('txType').value,
+                code: document.getElementById('stockCode').value.toUpperCase(),
+                name: document.getElementById('stockName').value || '股票',
+                shares: parseFloat(document.getElementById('shares').value) || 1000,
+                totalCost: cost,
+                sellPrice: parseFloat(document.getElementById('sellPrice').value) || 0,
+                fee: parseFloat(document.getElementById('fee').value) || 0,
+                tax: parseFloat(document.getElementById('tax').value) || 0,
+                profit: profit,
+                roi: formatRoiPercent(rawRoi, cost, profit)
+            };
+
+            if (idx === -1) { transactions.unshift(tx); } else { transactions[idx] = tx; }
+            localStorage.setItem('tw_stock_transactions', JSON.stringify(transactions));
+            renderTable();
+            updateStatistics();
+            pushToCloud();
+            closeModal();
+        }
+
+        function editTransaction(idx) {
+            userLockedProfit = true;
+            const tx = transactions[idx];
+            document.getElementById('editIndex').value = idx;
+            document.getElementById('modalTitle').innerText = "編輯交易紀錄";
+            document.getElementById('txDate').value = tx.date;
+            document.getElementById('txType').value = tx.type;
+            document.getElementById('stockCode').value = tx.code;
+            document.getElementById('stockName').value = tx.name;
+            document.getElementById('shares').value = tx.shares;
+            document.getElementById('totalCostInput').value = tx.totalCost;
+            document.getElementById('sellPrice').value = tx.sellPrice;
+            document.getElementById('fee').value = tx.fee;
+            document.getElementById('tax').value = tx.tax;
+            document.getElementById('profit').value = tx.profit;
+            document.getElementById('roi').value = formatRoiPercent(tx.roi, tx.totalCost, tx.profit);
+            document.getElementById('transactionModal').classList.add('active');
+        }
+
+        function deleteTransaction(idx) {
+            if (confirm("確定刪除這筆紀錄嗎？")) {
+                transactions.splice(idx, 1);
+                localStorage.setItem('tw_stock_transactions', JSON.stringify(transactions));
+                renderTable();
+                updateStatistics();
+                pushToCloud();
+            }
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('transactionTableBody');
+            tbody.innerHTML = '';
+            document.getElementById('recordCount').innerText = `共 ${transactions.length} 筆`;
+            if (transactions.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="text-center" style="padding: 30px; color: #94a3b8;">目前尚無紀錄</td></tr>`;
+                return;
+            }
+            transactions.forEach((tx, idx) => {
+                const pClass = tx.profit > 0 ? 'text-red' : (tx.profit < 0 ? 'text-green' : '');
+                const sign = tx.profit > 0 ? '+' : '';
+                const sellTotal = (tx.shares || 0) * (tx.sellPrice || 0);
+                const displayRoi = formatRoiPercent(tx.roi, tx.totalCost, tx.profit);
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><b>${tx.date}</b><br><span style="font-size: 11px; color: #64748b;">${tx.type}</span></td>
+                    <td><b>${tx.code}</b><br><span style="font-size: 12px; color: #64748b;">${tx.name}</span></td>
+                    <td class="text-right">${(tx.shares||0).toLocaleString()} 股<br><span style="font-size: 12px; color: #64748b;">$${(tx.totalCost||0).toLocaleString()}</span></td>
+                    <td class="text-right">$${Math.round(sellTotal).toLocaleString()}<br><span style="font-size: 12px; color: #64748b;">賣 $${tx.sellPrice}</span></td>
+                    <td class="text-right" style="font-size: 12px;">手: $${tx.fee}<br>稅: $${tx.tax}</td>
+                    <td class="text-right ${pClass}">${sign}${(tx.profit||0).toLocaleString()}</td>
+                    <td class="text-right ${pClass}" style="font-weight: 700;">${displayRoi}</td>
+                    <td class="text-center">
+                        <button onclick="editTransaction(${idx})" style="background:none; border:none; color:#6366f1; cursor:pointer; padding:5px;"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick="deleteTransaction(${idx})" style="background:none; border:none; color:#ef4444; cursor:pointer; padding:5px;"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function updateStatistics() {
+            let costSum = 0, amtSum = 0, profitSum = 0;
+            transactions.forEach(tx => {
+                costSum += tx.totalCost || 0;
+                amtSum += (tx.shares || 0) * (tx.sellPrice || 0);
+                profitSum += tx.profit || 0;
+            });
+            let totalRoi = formatRoiPercent(null, costSum, profitSum);
+            document.getElementById('statTotalCost').innerText = `$${Math.round(costSum).toLocaleString()}`;
+            document.getElementById('statTotalAmount').innerText = `$${Math.round(amtSum).toLocaleString()}`;
+            
+            const pEl = document.getElementById('statTotalProfit');
+            pEl.innerText = `${profitSum > 0 ? '+' : ''}$${Math.round(profitSum).toLocaleString()}`;
+            pEl.className = profitSum > 0 ? 'text-red' : (profitSum < 0 ? 'text-green' : '');
+            
+            const rEl = document.getElementById('statTotalROI');
+            rEl.innerText = totalRoi;
+            rEl.className = profitSum > 0 ? 'text-red' : (profitSum < 0 ? 'text-green' : '');
+        }
+
+        function exportCSV() {
+            if (transactions.length === 0) { alert("沒有資料"); return; }
+            let csv = "\uFEFF日期,類別,代號,名稱,股數,成本,賣價,手續費,稅,損益,報酬率\n";
+            transactions.forEach(t => {
+                const formattedRoi = formatRoiPercent(t.roi, t.totalCost, t.profit);
+                csv += `"${t.date}","${t.type}","${t.code}","${t.name}",${t.shares},${t.totalCost},${t.sellPrice},${t.fee},${t.tax},${t.profit},"${formattedRoi}"\n`;
+            });
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `stock.csv`;
+            a.click();
+        }
+    </script>
+</body>
+</html>
